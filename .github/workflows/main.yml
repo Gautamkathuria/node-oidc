@@ -58,19 +58,20 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+        script: |
+         
+           AWS_REGION=${{ env.AWS_REGION }}
+           ACCOUNT_ID=082447916188
 
-            AWS_REGION=${{ env.AWS_REGION }}
-            ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+           IMAGE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
-            IMAGE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+           aws ecr get-login-password --region $AWS_REGION \
+           | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-            aws ecr get-login-password --region $AWS_REGION \
-            | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+           docker pull $IMAGE
 
-            docker pull $IMAGE
+           docker stop myapp || true
+           docker rm myapp || true
 
-            docker stop myapp || true
-            docker rm myapp || true
-
+  docker run -d -p 80:3000 --name myapp $IMAGE
             docker run -d -p 80:3000 --name myapp $IMAGE
